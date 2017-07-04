@@ -3,28 +3,38 @@ import socket
 
 joy = Joystick()
 
-print('Started')
 
-f = True
+s = None
 try:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind(('127.0.0.1', 59667))
-    s.listen(1)
-    conn, addr = s.accept()
-    print('Connected from', addr)
+    s.listen(30)
 except:
-    print('Server not started! Exitting')
-    f = False
+    print('Not connected to Server!')
 
+print('Started')
+
+f = True
+conn = None
 while f:
-    req = conn.recv(4000)
-    if req == 'getBtns':
-        conn.send('#'.join(map(str, joy.getButtons())))
-    elif req == 'getAxis':
-        conn.send('#'.join(map(str, joy.getAxes())))
-    elif req == 'exit':
-        break
+    if conn == None:
+        try:
+            conn, addr = s.accept()
+            print('Connected from', addr)
+        except:
+            print('Not connected to Server!')
     else:
-        print("NOT RECOGNIZED! {}".format(req))
-
-conn.close()
+        req = conn.recv(4000)
+        if req == b'getBtns':
+            conn.send('$'.join(map(str, joy.getButtons())).encode('utf-8'))
+        elif req == b'getAxis':
+            conn.send('$'.join(map(str, joy.getAxis())).encode('utf-8'))
+        elif req == b'cExit':
+            conn.close()
+            conn = None
+        elif req == b'exit':
+            break
+        else:
+            print("NOT RECOGNIZED! {}".format(req))
+            conn.close()
+            conn = None

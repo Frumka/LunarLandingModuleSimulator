@@ -19,7 +19,7 @@ class JClient:
         try:
             self.s.send('getAxis')
             data = self.s.recv(5000)
-            return data
+            return data.split('$')
         except:
             return []
 
@@ -29,7 +29,7 @@ class JClient:
         try:
             self.s.send('getBtns')
             data = self.s.recv(5000)
-            return data
+            return data.split('$')
         except:
             return []
     def killServer(self):
@@ -41,5 +41,6 @@ class JClient:
             return None
 
     def __delete__(self, instance):
+        instance.s.send('cExit')
         self.s.close()
-        self.s.close()
+        instance.s.close()
