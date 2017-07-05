@@ -2,16 +2,16 @@ import pygame
 
 class Joystick:
     def __init__(self):
-        pygame.init()
+        pygame.display.init()
         pygame.joystick.init()
-        self.joystick = pygame.joystick.Joystick(0)
-        self.joystick.init()
+        pygame.joystick.Joystick(0).init()
 
     def getButtons(self):
         try:
+            pygame.event.pump()
             f2 = []
             for i in range(1, 7):
-                button = self.joystick.get_button(i)
+                button = pygame.joystick.Joystick(0).get_button(i)
                 f2 += [button]
             return f2
         except Exception:
@@ -20,11 +20,12 @@ class Joystick:
 
     def getAxis(self):
         try:
+            pygame.event.pump()
             f1 = []
             for i in range(4):
-                axis = self.joystick.get_axis(i)
+                axis = pygame.joystick.Joystick(0).get_axis(i)
                 f1 += [axis] if i != 2 else []
-            return f1
+            return list(map(lambda x: round(x, 2), f1))
         except Exception:
             print("getAxes() - Exception")
             return []
