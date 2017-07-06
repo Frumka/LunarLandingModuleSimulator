@@ -10,6 +10,8 @@ print('Started')
 while 1:
     axis = cl.getAxis()
     btns = cl.getBtns()
+    #if axis == []:
+    #    print('SERVER ERROR')
     print("{0}\t{1}".format(axis, btns))
-    time.sleep(0.1)
+    time.sleep(0.05)
 del cl

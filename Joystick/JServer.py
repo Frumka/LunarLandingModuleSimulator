@@ -26,34 +26,37 @@ class JServer:
         self.runt.start()
 
         self.pingt = threading.Thread(target=self.timeout)
-        self.pingt.daemon = True
-        ## UNCOMMENT THIS
-        #self.pingt.start()
+        self.pingt.start()
 
     def timeout(self):
         while self.r:
-            if (millis() - self.tm) > 5000 and self.conn != None:
-                print('CLIENT TIMEOUT. DISCONNECTING')
+            if (millis() - self.tm) > 5000 and self.conn != None and not self.d:
                 self.d = True
+                try:
+                    self.conn.close()
+                    del self.conn
+                    self.conn = None
+                    self.d = False
+                except:
+                    print('')
+                print('CLIENT TIMEOUT. DISCONNECTING')
 
     def accept(self):
+        self.d = True
         try:
             self.conn, self.addr = self.s.accept()
             print('Connected from', self.addr)
             self.tm = millis()
+            self.d = False
         except:
             print('Failed to connect to client!')
 
     def run(self):
         while self.r:
             if self.d:
-                self.conn.close()
-                del self.conn
-                self.conn = None
-                self.d = False
                 continue
 
-            if self.conn == None:
+            if self.conn == None and not self.d:
                 self.accept()
             else:
                 try:
