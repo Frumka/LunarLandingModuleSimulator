@@ -27,6 +27,8 @@ class CopterUtils:
             print('Waiting for GPS')
             Script.Sleep(1000)
 
+        self.armed = False
+
     def arm(self):
         Script.ChangeMode("ALTHOLD")
         self.setThr(1000)
@@ -34,11 +36,15 @@ class CopterUtils:
         MAV.doARM(True)
         self.setThr()
         print('Armed')
+        self.armed = True
 
     def disarm(self):
+        self.setThr(1000)
+        Script.ChangeMode("STABILIZE")
         print('Disarming')
         MAV.doARM(False)
         print('Disarmed')
+        self.armed = False
 
     def delay(self, w):
         Script.Sleep(w)
@@ -98,16 +104,19 @@ while 1:
 
     b = cu.parseButtons(btns)
 
-    if b["b1"] and b["joy"][0]:
+    if b["b1"] and b["joy"][0] and not cu.armed:
         cu.arm()
-    elif b["b1"] and b["joy"][2]:
-        cu.disarm()
-    elif b["b1"]:
-        cu.setThr(1600)
-    elif b["b2"]:
-        cu.setThr(1400)
-    else:
-        cu.setThr()
+    elif cu.armed:
+        if b["b1"] and b["joy"][2]:
+            cu.disarm()
+        elif b["b1"]:
+            cu.setThr(1600)
+        elif b["b2"]:
+            cu.setThr(1400)
+        else:
+            cu.setThr()
+
+    cl.sendTelemetry({'alt': cs.alt, 'roll': -cs.roll, 'pitch': cs.pitch, 'yaw': cs.yaw})
     cu.delay(100)
 
 del cl

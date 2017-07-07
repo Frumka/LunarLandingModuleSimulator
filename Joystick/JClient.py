@@ -1,5 +1,9 @@
-import socket
+import clr
+clr.AddReference('System.Web.Extensions')
+
+from System.Web.Script.Serialization import JavaScriptSerializer
 from System.Threading import Thread, ThreadStart
+import socket
 
 class JClient:
     def ping(self):
@@ -70,3 +74,12 @@ class JClient:
                 #   self.cb[data]()
             except:
                 print('getDataAsync - Exception')
+
+    def sendTelemetry(self, telem):
+        try:
+            telem = str(JavaScriptSerializer().Serialize(telem))
+            telem = "telem@" + telem
+            telem = telem.encode('utf-8')
+            self.s.send(telem)
+        except:
+            print('sendTelemetry - Exception')
