@@ -60,7 +60,7 @@ class JServer:
                 self.accept()
             else:
                 try:
-                    req = self.conn.recv(4000)
+                    req = self.conn.recv(1000)
                     self.tm = millis()
                     if req == b'getBtns':
                         self.conn.send('$'.join(map(str, self.joy.getButtons())).encode('utf-8'))
@@ -78,6 +78,15 @@ class JServer:
                         self.conn = None
                 except:
                     print('GET DATA ERROR')
+
+    def send(self, cmd):
+        try:
+            self.conn.send(cmd.encode('utf-8'))
+        except:
+            print('SEND CMD ERROR')
+
+    def isCliennt(self):
+        return self.conn != None
 
     def __delete__(self, instance):
         try:
