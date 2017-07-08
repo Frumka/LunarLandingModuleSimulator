@@ -3,8 +3,11 @@ import threading
 import imutils
 import urllib
 import math
+import time
 import cv2
 from PIL import Image
+
+millis = lambda: int(round(time.time() * 1000))
 
 font = cv2.FONT_HERSHEY_SIMPLEX
 
@@ -41,7 +44,6 @@ class Video:
         return cam1, cam2
 
     def processCam1(s, img):
-        #cv2.putText(img, 'Vertical speed: {}kph'.format(s.telem['vs']), (10, 550), font, 1, (0, 0, 0), 2)
         cv2.putText(img, 'Altitude: {}m'.format(s.telem['alt']), (10, 730), font, 1, (0, 255, 0), 2)
         img = s.createHorizont(img)
         return img
@@ -86,6 +88,9 @@ class Video:
 
     def run(s):
         # 720x576
+        start = time.time()
+        stop = 0
+        frames = 0
         while 1:
             if not s.telem:
                 continue
@@ -93,14 +98,19 @@ class Video:
                 print('OSD initialized')
                 s.ll = True
 
+            xst = time.time()
             cam1, cam2 = s.getCams()
+            xsf = time.time()
+            #print('!> {}'.format(xsf-xst))
             if cam1 == None:
+                cv2.destroyAllWindows()
                 s.showErr()
                 s.c += 1
                 continue
-            cam1, cam2 = cv2.resize(cam1, resolution, interpolation=cv2.INTER_CUBIC), cv2.resize(cam2, resolution, interpolation=cv2.INTER_CUBIC)
-            cam1, cam2 = s.processCam1(cam1), s.processCam2(cam2)
-            '''
+
+            #cam1, cam2 = cv2.resize(cam1, resolution, interpolation=cv2.INTER_NEAREST), cv2.resize(cam2, resolution, interpolation=cv2.INTER_NEAREST)
+            #cam1, cam2 = s.processCam1(cam1), s.processCam2(cam2)
+
             cv2.namedWindow("First camera", cv2.WND_PROP_FULLSCREEN)
             cv2.setWindowProperty("First camera", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
             cv2.namedWindow("Second camera", cv2.WND_PROP_FULLSCREEN)
@@ -109,10 +119,17 @@ class Video:
             cv2.imshow("Second camera", cam2)
             cv2.moveWindow("First camera", *pos1screen)
             cv2.moveWindow("Second camera", *pos2screen)
-            '''
-            cv2.imshow("First camera", cam1)
+
+            frames += 1
 
             x = cv2.waitKey(1)
-            if x == 27:
+            if x == 27 or frames == 500:
+                stop = time.time()
                 break
+
+        fps = 500 / (stop - start)
+        print(fps)
+
         cv2.destroyAllWindows()
+
+        s.run()
