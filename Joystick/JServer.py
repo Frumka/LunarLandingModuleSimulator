@@ -14,7 +14,10 @@ class JServer:
         try:
             self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.s.bind(('127.0.0.1', 59667))
-            self.s.listen(30)
+            self.s.listen(1)
+            self.ts = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.ts.bind(('127.0.0.1', 59666))
+            self.ts.listen(1)
         except:
             print('Failed to start Server!')
             self.__init__()
@@ -79,6 +82,15 @@ class JServer:
                     elif req == 'exit':
                         self.r = False
                         break
+                    elif req.find('telem') != -1 and req.find('@') != -1:
+                        try:
+                            self.ts.send(req.encode('utf-8'))
+                            if req.split('@')[0] in self.dict:
+                                fff = req.split('@')[1]
+                                fff = json.loads(fff)
+                                self.dict[req.split('@')[0]](fff)
+                        except:
+                            print(''), ''
                     elif req.find('@') != -1:
                         if req.split('@')[0] in self.dict:
                             fff = req.split('@')[1]

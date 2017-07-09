@@ -1,8 +1,7 @@
 from JServer import JServer
-from time import sleep
 from video import Video
 
-video = Video()
+video = Video(False, True)
 server = JServer({'telem': lambda x: video.newTelemetry(x)})
 
 #while not server.isCliennt():
