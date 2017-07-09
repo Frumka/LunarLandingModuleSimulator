@@ -1,3 +1,4 @@
+from overlay import OSD
 import numpy as np
 import threading
 import imutils
@@ -17,16 +18,33 @@ pos2screen = (0, 0)
 resolution = (1360, 762)
 
 class Video:
-    def __init__(self):
+    def __init__(self, type = False, vsource = False):
         print('Starting OSD')
+
+        self.osd = None
         self.telem = None
         self.ll = None
+
+        self.type = type
+        self.vsource = vsource
 
         self.runt = threading.Thread(target=self.run)
         self.runt.start()
 
         self.c = 0
+
+        if self.type:
+            self.osdThr = threading.Thread(target=self.osdTHR)
+            self.osdThr.start()
+
+        if self.vsource:
+            self.cap1 = cv2.VideoCapture(0)
+            self.cap2 = cv2.VideoCapture(0)
+
         print('OSD waiting telemetry')
+
+    def osdTHR(self):
+        self.osd = OSD(resolution, pos1screen, pos2screen)
 
     def downloadImg(s, url):
         resp = urllib.urlopen(url)
@@ -36,10 +54,14 @@ class Video:
 
     def getCams(s):
         try:
-            cam1 = s.downloadImg("http://127.0.0.1:8888/out.jpg")
-            cam2 = s.downloadImg("http://127.0.0.1:8889/out.jpg")
-        except:
-            print('Video get error')
+            if s.vsource:
+                ret, cam1 = s.cap1.read()
+                ret, cam2 = s.cap2.read()
+            else:
+                cam1 = s.downloadImg("http://127.0.0.1:8888/out.jpg")
+                cam2 = s.downloadImg("http://127.0.0.1:8889/out.jpg")
+        except Exception as e:
+            print('Video get error: {}'.format(e.message))
             return None, None
         return cam1, cam2
 
@@ -53,6 +75,8 @@ class Video:
 
     def newTelemetry(s, telem):
         s.telem = telem
+        if s.type and s.osd:
+            s.osd.newTelemetry(telem)
 
     def showErr(self):
         img = cv2.imread('media/error.png')
@@ -88,28 +112,31 @@ class Video:
 
     def run(s):
         # 720x576
-        start = time.time()
         stop = 0
         frames = 0
+        fps = 0
+        avg = 0.0
         while 1:
+            start = time.time()
+
             if not s.telem:
                 continue
             elif not s.ll:
                 print('OSD initialized')
                 s.ll = True
 
-            xst = time.time()
             cam1, cam2 = s.getCams()
-            xsf = time.time()
-            #print('!> {}'.format(xsf-xst))
             if cam1 == None:
                 cv2.destroyAllWindows()
                 s.showErr()
                 s.c += 1
                 continue
 
-            #cam1, cam2 = cv2.resize(cam1, resolution, interpolation=cv2.INTER_NEAREST), cv2.resize(cam2, resolution, interpolation=cv2.INTER_NEAREST)
-            #cam1, cam2 = s.processCam1(cam1), s.processCam2(cam2)
+            if not s.type:
+                cam1, cam2 = cv2.resize(cam1, resolution, interpolation=cv2.INTER_NEAREST), cv2.resize(cam2, resolution, interpolation=cv2.INTER_NEAREST)
+                cam1, cam2 = s.processCam1(cam1), s.processCam2(cam2)
+
+            cv2.putText(cam1, 'FPS: {}'.format(fps), (30, 30), font, 1, (0, 255, 0), 2)
 
             cv2.namedWindow("First camera", cv2.WND_PROP_FULLSCREEN)
             cv2.setWindowProperty("First camera", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
@@ -120,16 +147,12 @@ class Video:
             cv2.moveWindow("First camera", *pos1screen)
             cv2.moveWindow("Second camera", *pos2screen)
 
-            frames += 1
-
             x = cv2.waitKey(1)
-            if x == 27 or frames == 500:
-                stop = time.time()
+            if x == 27:
                 break
 
-        fps = 500 / (stop - start)
-        print(fps)
+            lfps = fps
+            fps = 1 / (time.time() - start)
+            fps = (lfps + fps) / 2
 
         cv2.destroyAllWindows()
-
-        s.run()
