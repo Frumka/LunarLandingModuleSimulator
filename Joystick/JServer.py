@@ -3,24 +3,37 @@ import socket
 import time
 import threading
 import json
+import signal
 
 millis = lambda: int(round(time.time() * 1000))
+
+class Killer:
+    kill_now = False
+    def __init__(self):
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+    def exit_gracefully(self, signum, frame):
+        self.kill_now = True
 
 class JServer:
     def __init__(self, dict):
         print ('Starting server')
+
+        self.killer = Killer()
+
         self.s = None
         self.dict = dict
         try:
             self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.s.bind(('127.0.0.1', 59667))
             self.s.listen(1)
-            self.ts = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.ts.bind(('127.0.0.1', 59666))
-            self.ts.listen(1)
+            #self.ts = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            #self.ts.bind(('127.0.0.1', 59666))
+            #self.ts.listen(1)
         except:
             print('Failed to start Server!')
-            self.__init__()
+            self.__init__(dict)
 
         self.joy = Joystick()
         self.tm = millis()
@@ -29,7 +42,7 @@ class JServer:
         self.d = False
 
         self.runt = threading.Thread(target=self.run)
-        self.runt.start()
+        #self.runt.start()
 
         self.pingt = threading.Thread(target=self.timeout)
         self.pingt.start()
@@ -38,6 +51,10 @@ class JServer:
 
     def timeout(self):
         while self.r:
+            if self.killer.kill_now:
+                self.r = False
+                self.pingt.join()
+                break
             if (millis() - self.tm) > 5000 and self.conn != None and not self.d:
                 self.d = True
                 try:
@@ -46,7 +63,7 @@ class JServer:
                     self.conn = None
                     self.d = False
                 except:
-                    print('')
+                    print(''), ''
                 print('CLIENT TIMEOUT. DISCONNECTING')
 
     def accept(self):
@@ -70,6 +87,7 @@ class JServer:
                 if self.conn == None:
                     continue
                 try:
+                    #self.conn.send(b'1111')
                     req = self.conn.recv(1000).decode("utf-8")
                     self.tm = millis()
                     if req == 'getBtns':
@@ -84,7 +102,7 @@ class JServer:
                         break
                     elif req.find('telem') != -1 and req.find('@') != -1:
                         try:
-                            self.ts.send(req.encode('utf-8'))
+                            #self.ts.send(req.encode('utf-8'))
                             if req.split('@')[0] in self.dict:
                                 fff = req.split('@')[1]
                                 fff = json.loads(fff)
@@ -104,6 +122,8 @@ class JServer:
                     print('GET DATA ERROR {}'.format(errr))
 
     def send(self, cmd):
+        if not self.conn:
+            return
         try:
             self.conn.send(cmd.encode('utf-8'))
         except:
