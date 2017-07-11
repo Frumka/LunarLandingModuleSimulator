@@ -1,4 +1,7 @@
-from overlay import OSD
+# coding=utf-8
+# UNCOMMENT TO USE PyQT
+# from overlay import OSD
+from multiprocessing import Process, Pipe
 import numpy as np
 import threading
 import imutils
@@ -43,6 +46,9 @@ class Video:
 
         print('OSD waiting telemetry')
 
+        p.start()
+        #p.join()
+
     def osdTHR(self):
         self.osd = OSD(resolution, pos1screen, pos2screen)
 
@@ -55,8 +61,12 @@ class Video:
     def getCams(s):
         try:
             if s.vsource:
+                '''
                 ret, cam1 = s.cap1.read()
                 ret, cam2 = s.cap2.read()
+                '''
+                cam1 = cv2.cv.QueryFrame(s.cap1)
+                cam2 = cv2.cv.QueryFrame(s.cap2)
             else:
                 cam1 = s.downloadImg("http://127.0.0.1:8888/out.jpg")
                 cam2 = s.downloadImg("http://127.0.0.1:8889/out.jpg")
@@ -66,7 +76,11 @@ class Video:
         return cam1, cam2
 
     def processCam1(s, img):
-        cv2.putText(img, 'Altitude: {}m'.format(s.telem['alt']), (10, 730), font, 1, (0, 255, 0), 2)
+        cv2.putText(img, 'Altitude: {}'.format(s.telem['alt']), (resolution[0]-200, 50), font, 1, (0, 255, 0), 2)
+        cv2.putText(img, 'Pitch:   {}'.format(s.telem['pitch']), (resolution[0]-200, 80), font, 1, (0, 255, 0), 2)
+        cv2.putText(img, 'Yaw:    {}'.format(s.telem['yaw']), (resolution[0]-200, 110), font, 1, (0, 255, 0), 2)
+        cv2.putText(img, 'xxx:    {}'.format(s.telem['tg']), (resolution[0]-200, 140), font, 1, (0, 255, 0), 2)
+
         img = s.createHorizont(img)
         return img
 
@@ -75,8 +89,11 @@ class Video:
 
     def newTelemetry(s, telem):
         s.telem = telem
-        if s.type and s.osd:
-            s.osd.newTelemetry(telem)
+        try:
+            if s.type and s.osd:
+                s.osd.newTelemetry(telem)
+        except:
+            print '', ''
 
     def showErr(self):
         img = cv2.imread('media/error.png')
@@ -118,7 +135,6 @@ class Video:
         avg = 0.0
         while 1:
             start = time.time()
-
             if not s.telem:
                 continue
             elif not s.ll:
@@ -134,7 +150,7 @@ class Video:
 
             if not s.type:
                 cam1, cam2 = cv2.resize(cam1, resolution, interpolation=cv2.INTER_NEAREST), cv2.resize(cam2, resolution, interpolation=cv2.INTER_NEAREST)
-                cam1, cam2 = s.processCam1(cam1), s.processCam2(cam2)
+                #cam1, cam2 = s.processCam1(cam1), s.processCam2(cam2)
 
             cv2.putText(cam1, 'FPS: {}'.format(fps), (30, 30), font, 1, (0, 255, 0), 2)
 
@@ -153,6 +169,5 @@ class Video:
 
             lfps = fps
             fps = 1 / (time.time() - start)
-            fps = (lfps + fps) / 2
 
         cv2.destroyAllWindows()
