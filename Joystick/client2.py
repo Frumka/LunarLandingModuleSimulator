@@ -29,7 +29,7 @@ class CopterUtils:
             print('Waiting for GPS')
             Script.Sleep(1000)
 
-        self.armed = True
+        self.armed = False
 
     def arm(self):
         #Script.ChangeMode("ALTHOLD")
@@ -62,11 +62,11 @@ class CopterUtils:
         self.setThr()
 
     def RCcal(self):
-        for chan in range(1, 9):
+        for chan in range(1, 15):
             for i in range(1000, 2001, 100):
                 print("{0}.{1}".format(chan, i))
                 Script.SendRC(chan, i, True)
-                self.delay(50)
+                self.delay(100)
 
     def setThr(self, e=1500):
         Script.SendRC(3, e, True)
@@ -80,40 +80,43 @@ class CopterUtils:
 print ('Script started')
 
 cu = CopterUtils(False)
-#cl = JClient({b"arm": cu.arm, b"disarm": cu.disarm, b"land": cu.land, b"takeoff": cu.takeoff})
+cl = JClient({b"arm": cu.arm, b"disarm": cu.disarm, b"land": cu.land, b"takeoff": cu.takeoff})
 
-while 1:
-    cu.RCcal()
-    cu.delay(100)
+#while 1:
+#    cu.RCcal()
+#    cu.delay(50)
 
 mode = 1
-
+thr = 1000
+tConst = 10
 print('Started')
+
+'''
+    2
+0       1
+    3 
+'''
+
 while 1:
+    st = time.time()
     axis = cl.getAxis()
-    cu.delay(10)
     btns = cl.getBtns()
-    if axis == []:
+
+    if len(axis) != 3 or len(btns) != 6:
         print('SERVER ERROR')
         continue
-    x = translate(axis[0], -1.0, 1.0, 1000.0, 2000.0)
-    #y = translate(axis[1], -1.0, 1.0, 1000.0, 2000.0)
-    z = translate(axis[2], -1.0, 1.0, 1000.0, 2000.0)
-
-    Script.SendRC(1, x, False)
-    #Script.SendRC(2, y, True)
-    Script.SendRC(4, z, False)
-
-    f = translate(0.0 if axis[1] >= 0.0 else axis[1], -1.0, 0.0, 2000.0, 1300.0)
-    Script.SendRC(3, f, True)
-
     b = cu.parseButtons(btns)
 
-    '''
-        2
-    0       1
-        3 
-    '''
+    #x = translate(axis[0], -1.0, 1.0, 1000.0, 2000.0)
+    #y = translate(axis[1], -1.0, 1.0, 1000.0, 2000.0)
+    #z = translate(axis[2], -1.0, 1.0, 1000.0, 2000.0)
+
+    #Script.SendRC(1, x, False)
+    #Script.SendRC(2, y, True)
+    #Script.SendRC(4, z, False)
+
+    #f = translate(0.0 if axis[1] >= 0.0 else axis[1], -1.0, 0.0, 2000.0, 1300.0)
+    #Script.SendRC(3, f, True)
 
     if b["b1"] and b["joy"][0] and not cu.armed:
         cu.arm()
@@ -122,12 +125,33 @@ while 1:
             cu.disarm()
 
         if mode == 1:
-            if b["joy"][0]:
-                Script.SendRC(2, 1600, True)
+            i = 0
+            j = 0
+            if b["joy"][2]:
+                i = 1600
             elif b["joy"][3]:
-                Script.SendRC(2, 1400, True)
+                i = 1400
             else:
-                Script.SendRC(2, 1500, True)
+                i = 1500
+
+            if b["joy"][1]:
+                j = 1600
+            elif b["joy"][0]:
+                j = 1400
+            else:
+                j = 1500
+
+            if b["b2"]:
+                thr -= (0 if (thr - tConst) < 1000 else tConst)
+            elif b["b1"]:
+                thr += (0 if (thr + tConst) > 2000 else tConst)
+
+            z = translate(axis[2], -1.0, 1.0, 1000.0, 2000.0)
+
+            Script.SendRC(1, j, False)
+            Script.SendRC(2, i, False)
+            Script.SendRC(3, thr, False)
+            Script.SendRC(4, z, True)
         elif mode == 2:
             if b["b1"]:
                 cu.setThr(1700)
@@ -138,5 +162,7 @@ while 1:
 
     cl.sendTelemetry({'alt': cs.alt, 'roll': -cs.roll, 'pitch': cs.pitch, 'yaw': cs.yaw, 'tg': 40})
     cu.delay(20)
+
+    print 1 / (time.time()-st)
 
 del cl
